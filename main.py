@@ -1,9 +1,8 @@
-import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+import numpy as np
 
-# Données fournies
+# ✅ Données simulées
 data = {
     'commandes': 500,
     'commandes_livrees_a_temps': 420,
@@ -17,62 +16,78 @@ data = {
     'delais_livraisons_fournisseurs': [True, True, False, True, False, True, True, True, False, True],
 }
 
-# Calculs des KPI
-kpi = {}
+# ✅ Calcul des KPI
+kpis = {}
 
-# Ponctualité des commandes clients (%)
-kpi['ponctualite_clients'] = (data['commandes_livrees_a_temps'] / data['commandes']) * 100
+# 1. Livraison à l’heure (Ponctualité client)
+kpis['Ponctualité Client (%)'] = round(data['commandes_livrees_a_temps'] / data['commandes'] * 100, 2)
 
-# Ratio stock / ventes
-kpi['ratio_stock_ventes'] = data['stock_moyen'] / data['ventes_net']
+# 2. Ratio Stock / Ventes (ISR)
+kpis['ISR (Stock/Ventes)'] = round(data['stock_moyen'] / data['ventes_net'], 2)
 
-# DSI (Durée Moyenne de Rotation des Stocks)
-kpi['dsi'] = (data['stock_moyen'] / data['cout_biens_vendus']) * 365
+# 3. Coût de possession du stock
+kpis['Coût de possession du stock (€)'] = round(data['stock_moyen'] * data['taux_possession'], 2)
 
-# Coût de possession du stock (en €)
-kpi['cout_possession_stock'] = data['stock_moyen'] * data['taux_possession']
+# 4. Ponctualité fournisseurs
+ponctualite_fournisseurs = sum(data['delais_livraisons_fournisseurs']) / len(data['delais_livraisons_fournisseurs']) * 100
+kpis['Ponctualité Fournisseurs (%)'] = round(ponctualite_fournisseurs, 2)
 
-# Coût de transport par tonne (en €/tonne)
-kpi['cout_transport_par_tonne'] = data['cout_total_transport'] / data['tonnage_total']
+# 5. DSI – Durée moyenne de rotation des stocks
+kpis['DSI (jours)'] = round((data['stock_moyen'] / data['cout_biens_vendus']) * 365, 1)
 
-# Ponctualité des livraisons fournisseurs (%)
-ponctualite_fournisseurs = data['delais_livraisons_fournisseurs']
-kpi['ponctualite_fournisseurs'] = (sum(ponctualite_fournisseurs) / len(ponctualite_fournisseurs)) * 100
+# 6. Coût transport par tonne
+kpis['Coût transport/tonne (€)'] = round(data['cout_total_transport'] / data['tonnage_total'], 2)
 
-# Taux de commandes parfaites (%)
-kpi['taux_commandes_parfaites'] = (data['commandes_parfaites'] / data['commandes']) * 100
+# 7. Taux de commandes parfaites
+kpis['Commandes parfaites (%)'] = round(data['commandes_parfaites'] / data['commandes'] * 100, 2)
 
-# Affichage des résultats
-df_kpi = pd.DataFrame([kpi])
-print("Résumé des KPI calculés :")
-print(df_kpi)
+# ✅ Affichage des KPI
+print("🔍 Résumé des KPI logistiques :\n")
+for k, v in kpis.items():
+    print(f"{k}: {v}")
 
-# Visualisation des KPI
-plt.figure(figsize=(10, 6))
-kpi_labels = [
-    'Ponctualité Clients (%)', 'Ratio Stock / Ventes', 'DSI (jours)',
-    'Coût de possession du stock (€)', 'Coût Transport / Tonne (€)',
-    'Ponctualité Fournisseurs (%)', 'Commandes Parfaites (%)'
-]
-kpi_values = list(kpi.values())
+# ✅ Comparaison avec les seuils standards
+seuils = {
+    'Ponctualité Client (%)': 95,
+    'ISR (Stock/Ventes)': 0.2,
+    'Ponctualité Fournisseurs (%)': 90,
+    'DSI (jours)': 60,
+    'Coût transport/tonne (€)': 50,
+    'Commandes parfaites (%)': 98
+}
 
-sns.barplot(x=kpi_labels, y=kpi_values, palette="viridis")
-plt.title("Performance des KPI Logistiques")
-plt.ylabel("Valeurs")
-plt.xticks(rotation=45, ha='right')
+# ✅ Visualisation radar
+import pandas as pd
+
+kpi_names = list(seuils.keys())
+kpi_values = [kpis[k] for k in kpi_names]
+kpi_seuils = [seuils[k] for k in kpi_names]
+
+df_kpi = pd.DataFrame({
+    'KPI': kpi_names,
+    'Valeur Réelle': kpi_values,
+    'Seuil Recommandé': kpi_seuils
+})
+
+angles = np.linspace(0, 2 * np.pi, len(kpi_names), endpoint=False).tolist()
+values = df_kpi['Valeur Réelle'].tolist()
+seuils_plot = df_kpi['Seuil Recommandé'].tolist()
+
+# Fermer le cercle
+values += values[:1]
+seuils_plot += seuils_plot[:1]
+angles += angles[:1]
+
+# Radar chart
+plt.figure(figsize=(8, 6))
+ax = plt.subplot(111, polar=True)
+ax.plot(angles, values, 'o-', linewidth=2, label='Valeur Réelle')
+ax.fill(angles, values, alpha=0.25)
+ax.plot(angles, seuils_plot, 'o--', color='red', linewidth=2, label='Seuil')
+ax.fill(angles, seuils_plot, color='red', alpha=0.1)
+
+ax.set_thetagrids(np.degrees(angles[:-1]), kpi_names)
+plt.title("Comparaison KPI vs Seuils", size=15)
+plt.legend(loc='upper right')
 plt.tight_layout()
 plt.show()
-
-# Recommandations basées sur les KPI
-print("\nRecommandations :")
-if kpi['ponctualite_clients'] < 95:
-    print("- Améliorer la gestion des livraisons aux clients pour augmenter la ponctualité.")
-
-if kpi['ratio_stock_ventes'] > 0.5:
-    print("- Optimiser les niveaux de stock pour réduire les coûts liés au surstockage.")
-
-if kpi['cout_transport_par_tonne'] > 50:
-    print("- Réévaluer les solutions logistiques pour réduire les coûts de transport.")
-
-if kpi['taux_commandes_parfaites'] < 90:
-    print("- Renforcer la qualité opérationnelle pour assurer davantage de commandes parfaites.")
